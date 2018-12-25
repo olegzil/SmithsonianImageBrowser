@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">ImageExplorer</string>
+    <string name="main_view_title">SmithsonianImages</string>
+</resources>
