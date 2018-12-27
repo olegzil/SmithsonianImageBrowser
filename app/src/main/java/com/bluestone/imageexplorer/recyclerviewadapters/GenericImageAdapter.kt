@@ -23,15 +23,15 @@ class GenericImageAdapter : RecyclerView.Adapter<GenericImageAdapter.ImageHolder
 
     inner class ImageHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         fun bind(itemDetail: ItemDetail) {
-            itemView.findViewById<TextView>(R.id.restaurant_name).text = itemDetail.restaurantName
-            val item = itemView.findViewById<ImageView>(R.id.restaurant_thumbnail)
+            itemView.findViewById<TextView>(R.id.image_name).text = itemDetail.title
+            val item = itemView.findViewById<ImageView>(R.id.thumbnail)
 
             Picasso.get()
-                .load(itemDetail.restaurantThumbnailUrl)
+                .load(itemDetail.thumbnailUrl)
                 .placeholder(R.drawable.ic_launcher_background)
                 .resize(600, 200)
                 .centerInside()
-                .into(itemView.findViewById<ImageView>(R.id.restaurant_thumbnail))
+                .into(itemView.findViewById<ImageView>(R.id.thumbnail))
         }
     }
 

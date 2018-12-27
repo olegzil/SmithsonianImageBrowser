@@ -12,30 +12,16 @@
               android:paddingRight="@dimen/activity_horizontal_margin"
               android:paddingTop="@dimen/row_padding_vertical">
     <ImageView
-            android:id="@+id/restaurant_thumbnail"
+            android:id="@+id/thumbnail"
             android:layout_width="fill_parent"
             android:layout_height="wrap_content"
             android:layout_weight="0.5"
             android:gravity="center"/>
 
     <TextView
-            android:id="@+id/restaurant_name"
+            android:id="@+id/image_name"
             android:layout_width="fill_parent"
             android:layout_height="wrap_content"
             android:layout_weight="0.5"
             android:gravity="center"/>
-    <TextView
-            android:id="@+id/food_type"
-            android:layout_width="fill_parent"
-            android:layout_height="wrap_content"
-            android:layout_weight="0.5"
-            android:gravity="center"/>
-
-    <TextView
-            android:id="@+id/restaurnt_status"
-            android:layout_width="fill_parent"
-            android:layout_height="wrap_content"
-            android:layout_weight="0.5"
-            android:gravity="center"/>
-
 </LinearLayout>

@@ -18,13 +18,14 @@ class RetrofitNetworkService(headerInitializer: NetworkServiceInitializer) {
         logging.level = HttpLoggingInterceptor.Level.HEADERS
         httpClient.addInterceptor(logging)
         baseUrl = headerInitializer.base
-        httpClient.addInterceptor { interceptor ->
-            val original = interceptor.request()
-            headerInitializer.headerValues?.forEach { headerData ->
-                original.newBuilder().addHeader(headerData.key, headerData.value)
-            }
-            interceptor.proceed(original.newBuilder().build())
-        }
+        httpClient
+            .addInterceptor { chain ->
+                val request = chain.request().newBuilder()
+                headerInitializer.headerValues?.forEach { headerData ->
+                    request.addHeader(headerData.key, headerData.value)
+                }
+                chain.proceed(request.build())
+            }.build()
     }
 
     private fun getRetrofit(): Retrofit? {

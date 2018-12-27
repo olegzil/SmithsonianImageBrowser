@@ -7,7 +7,7 @@ class RestaurantData(
     @SerializedName("restaurantId") val restaurantId : String,
     @SerializedName("restaurantName") val restaurantName : String,
     @SerializedName("foodType") val foodType : String,
-    @SerializedName("restaurantThumbnailUrl") val restaurantThumbnailUrl : String,
+    @SerializedName("thumbnailUrl") val restaurantThumbnailUrl : String,
     @SerializedName("restaurantStatus") val restaurantStatus : String,
     @SerializedName("deliveryFee") val deliveryFee : Int
 )

@@ -22,6 +22,7 @@ import com.bluestone.imageexplorer.recyclerviewadapters.GenericImageAdapter
 import com.bluestone.imageexplorer.touchhandlers.RecyclerItemClickListener
 import com.bluestone.imageexplorer.touchhandlers.RecyclerViewScrollHandler
 import com.bluestone.imageexplorer.utilities.printLog
+import com.bluestone.imageexplorer.utilities.printLogWithStack
 import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
@@ -40,10 +41,10 @@ open class BaseFragment : Fragment(), FragmentCreationInterface {
         * If context is null, the show is over. Otherwise, we test savedInstanceState. If that value is not null
         * we use the previously saved state. If that value is null, then the run clause is executed and we try
         * to use the global state that was saved by the caller. This bit of complexity allows the class inheriting
-        * from BaseFragment to be used in the xml file, i.e. <fragment android:name="com.bluestone.imageexplorer.fragments.RestaurantListFragment"/>
+        * from BaseFragment to be used in the xml file, i.e. <fragment android:name="com.bluestone.imageexplorer.fragments.SmithsonianImagesFragment"/>
         * Without the global state BaseFragment code will be constructed without initial data.
         * */
-        context?.let { context ->
+        context?.let { _ ->
             savedInstanceState?.let { bundle ->
                 parentState =
                         bundle.getSerializable(BASE_FRAGMENT_INITIAL_DATA_KEY) as BaseFragmentInitializer
@@ -73,7 +74,7 @@ open class BaseFragment : Fragment(), FragmentCreationInterface {
     override fun onResume() {
         super.onResume()
         printLog("${parentState.fragmentTag}.onResume")
-        populateAdapterFromSavedState()?.run {
+        populateAdapterFromSavedState(nextPage)?.run {
             val disposable = observeOn(AndroidSchedulers.mainThread())
                 .subscribeOn(Schedulers.io())
                 .subscribeWith(object : DisposableSingleObserver<DisplayedPageState>() {
@@ -86,7 +87,7 @@ open class BaseFragment : Fragment(), FragmentCreationInterface {
                     }
 
                     override fun onError(e: Throwable) {
-                        printLog(e.localizedMessage)
+                        printLogWithStack(e.localizedMessage)
                         // Do Nothing. Should never reach this logic
                     }
                 })
@@ -114,7 +115,7 @@ open class BaseFragment : Fragment(), FragmentCreationInterface {
         printLog("onSaveInstanceState")
     }
 
-    protected open fun fetchServerData(): Single<DisplayedPageState>? {
+    protected open fun fetchServerData(nextPage: Int): Single<DisplayedPageState>? {
         return Single.never()
     }
 
@@ -132,7 +133,7 @@ open class BaseFragment : Fragment(), FragmentCreationInterface {
         }
     }
 
-    private fun populateAdapterFromSavedState(): Single<DisplayedPageState>? =  fetchServerDataAsSingle()
+    private fun populateAdapterFromSavedState(nextPage:Int): Single<DisplayedPageState>? =  fetchNextPage(nextPage)
 
 
     private fun savedStateReader(): Single<DisplayedPageState>? =
@@ -143,8 +144,8 @@ open class BaseFragment : Fragment(), FragmentCreationInterface {
             }
         }
 
-    private fun fetchServerDataAsSingle(): Single<DisplayedPageState>? {
-        return fetchServerData()
+    private fun fetchNextPage(nextPage: Int): Single<DisplayedPageState>? {
+        return fetchServerData(nextPage)
     }
 
     protected fun displayDetailPhoto(url: String) {
@@ -167,8 +168,7 @@ open class BaseFragment : Fragment(), FragmentCreationInterface {
                     RecyclerViewScrollHandler(
                         context,
                         parentState.genericAdapter,
-                        parentState.serverCall,
-                        parentState.location,
+                        parentState.dataLoader,
                         nextPage
                     )
                 )
@@ -179,7 +179,7 @@ open class BaseFragment : Fragment(), FragmentCreationInterface {
                         mRecyclerView,
                         object : RecyclerItemClickListener.OnItemClickListener {
                             override fun onItemClick(view: View, position: Int) {
-                                displayDetailPhoto(parentState.genericAdapter.getItemDetailByPosition(position).restaurantThumbnailUrl)
+                                displayDetailPhoto(parentState.genericAdapter.getItemDetailByPosition(position).thumbnailUrl)
                             }
 
                             override fun onItemLongClick(view: View?, position: Int) {

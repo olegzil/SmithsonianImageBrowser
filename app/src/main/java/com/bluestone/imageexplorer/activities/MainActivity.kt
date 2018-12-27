@@ -7,7 +7,7 @@ import com.bluestone.imageexplorer.R
 import com.bluestone.imageexplorer.cachemanager.CacheManager
 import com.bluestone.imageexplorer.datamodel.FragmentCreationDescriptor
 import com.bluestone.imageexplorer.datamodel.MainActivityData
-import com.bluestone.imageexplorer.fragments.RestaurantListFragment
+import com.bluestone.imageexplorer.fragments.SmithsonianImagesFragment
 import com.bluestone.imageexplorer.utilities.printLog
 import io.reactivex.disposables.Disposables
 import io.reactivex.observers.DisposableObserver
@@ -29,7 +29,7 @@ class MainActivity : AppCompatActivity() {
         }
         setContentView(R.layout.activity_main)
         CacheManager.initialize(applicationContext, "masterDB")
-        displayNextFragment(RestaurantListFragment.newInstance() as Fragment, RestaurantListFragment.fragmentID)
+        displayNextFragment(SmithsonianImagesFragment.newInstance() as Fragment, SmithsonianImagesFragment.fragmentID)
     }
 
     private fun displayNextFragment(fragment: Fragment, fragmentID: String) {

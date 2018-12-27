@@ -6,12 +6,10 @@ import android.support.v7.widget.LinearLayoutManager
 import android.support.v7.widget.RecyclerView
 import android.widget.AbsListView
 import android.widget.Toast
-import com.bluestone.imageexplorer.datamodel.DisplayedPageState
+import com.bluestone.imageexplorer.interfaces.DataLoaderInterface
+import com.bluestone.imageexplorer.itemdetail.ItemDetail
 import com.bluestone.imageexplorer.recyclerviewadapters.GenericImageAdapter
-import com.bluestone.imageexplorer.server.RetrofitNetworkService
-import com.bluestone.imageexplorer.utilities.populateRestaurantData
 import com.bluestone.imageexplorer.utilities.printLog
-import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.Disposables
 import io.reactivex.observers.DisposableSingleObserver
@@ -20,8 +18,7 @@ import io.reactivex.schedulers.Schedulers
 class RecyclerViewScrollHandler(
     private val context: Context,
     private val adapter: GenericImageAdapter,
-    private val serverCall: RetrofitNetworkService,
-    private val location:Pair<Float,Float>,
+    private val dataLoader: DataLoaderInterface,
     private var nextPage: Int
 ) : RecyclerView.OnScrollListener() {
     private var disposable = Disposables.disposed()
@@ -72,29 +69,23 @@ class RecyclerViewScrollHandler(
         prevPage = nextPage
         disposable.dispose()
         printLog("Count before scroll ${adapter.itemCount}")
-        serverCall.getApi()?.run {
-            disposable = this.fetchRLNextPage(location.first, location.second, GenericImageAdapter.maxPageSize, nextPage)
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribeOn(Schedulers.io())
-                .subscribeWith(object : DisposableSingleObserver<String>() {
-                    override fun onSuccess(items: String) {
-                        populateRestaurantData(items)?.let { itemList ->
-                            when (scrollDirection) {
-                                ScrollDirection.SCROLL_UP -> if (last == GenericImageAdapter.maxAdapterSize - 1) adapter.removeFirstNItems(
-                                    itemList
-                                )
-                                ScrollDirection.SCROLL_DOWN -> if (first == 0) adapter.removeLastNItems(itemList)
-                                else -> printLog("no need to update paging")
-                            }
-                        } ?: let {
-                            Single.error<DisplayedPageState>(Throwable("Empty Payload"))
+        dataLoader.get(GenericImageAdapter.maxPageSize, nextPage)?.run {
+            observeOn(AndroidSchedulers.mainThread())
+            .subscribeOn(Schedulers.io())
+            .subscribeWith(object : DisposableSingleObserver<List<ItemDetail>>() {
+                override fun onSuccess(items: List<ItemDetail>) {
+                        when (scrollDirection) {
+                            ScrollDirection.SCROLL_UP -> if (last == GenericImageAdapter.maxAdapterSize - 1) adapter.removeFirstNItems(
+                                items
+                            )
+                            ScrollDirection.SCROLL_DOWN -> if (first == 0) adapter.removeLastNItems(items)
+                            else -> printLog("no need to update paging")
                         }
-                    }
-
-                    override fun onError(e: Throwable) {
-                        Toast.makeText(context, e.localizedMessage, Toast.LENGTH_SHORT).show()
-                    }
-                })
+                }
+                override fun onError(e: Throwable) {
+                    Toast.makeText(context, e.localizedMessage, Toast.LENGTH_SHORT).show()
+                }
+            })
         }
     }
 }
