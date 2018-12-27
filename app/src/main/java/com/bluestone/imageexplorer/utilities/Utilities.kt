@@ -12,7 +12,8 @@ import org.json.JSONObject
 const val TAG = "DoorDashTest"
 
 data class CombinedImageData(var url: String, val payload: ImageDirectoryEntry)
-class ImmutableList<T>(private val inner:List<T>) : List<T> by inner
+class ImmutableList<T>(private val inner: List<T>) : List<T> by inner
+
 fun <T> List<T>.toImmutableList(): List<T> {
     if (this is ImmutableList<T>) {
         return this
@@ -22,13 +23,13 @@ fun <T> List<T>.toImmutableList(): List<T> {
 }
 
 fun printLog(msg: String) {
-    val decorator="=-=-=-=-=-=-="
+    val decorator = "=-=-=-=-=-=-="
 //    if (Log.isLoggable(TAG, Log.DEBUG))
     Log.d(TAG, "$decorator $msg $decorator")
 }
 
 fun printLogWithStack(msg: String) {
-    val decorator="=-=-=-=-=-=-="
+    val decorator = "=-=-=-=-=-=-="
 //    if (Log.isLoggable(TAG, Log.DEBUG))
     Log.d(TAG, "$decorator begin stack trace $decorator")
     Log.d(TAG, "$decorator $msg $decorator")
@@ -61,13 +62,28 @@ fun fetchImageDirectoryEntries(
                     val dataArray = rootObject.getJSONArray("data")
                     val imageDescriptor = mutableListOf<ImageDirectoryEntry>()
                     for (index in 0 until dataArray.length()) {
-                        val id = dataArray.getJSONObject(index).optString("id")
+                        val key = dataArray.getJSONObject(index).optString("id")
                         val attributes = dataArray.getJSONObject(index).optJSONObject("attributes")
                         attributes?.let { attributesItems ->
                             val title = attributesItems.optString("title")
                             val creditLine = attributesItems.optString("credit_line")
                             val displayMedium = attributesItems.optString("display_mediums")
-                            imageDescriptor.add(ImageDirectoryEntry(id, title, creditLine, displayMedium))
+                            val relationships = dataArray.getJSONObject(index).optJSONObject("relationships")
+                            relationships?.optJSONObject("default_image")
+                                ?.optJSONObject("data")
+                                ?.optString("id")
+                                ?.let { pathToImage ->
+                                    if (key.isNotEmpty())
+                                        imageDescriptor.add(
+                                            ImageDirectoryEntry(
+                                                key,
+                                                pathToImage,
+                                                title,
+                                                creditLine,
+                                                displayMedium
+                                            )
+                                        )
+                                }
                         }
                     }
                     if (imageDescriptor.size > 0)
@@ -132,12 +148,12 @@ fun fetchItemDetails(
         it.forEach { imageDirectoryEntry ->
             server.getApi()?.run {
                 urlToIDMap[imageDirectoryEntry.imageID] = CombinedImageData("", imageDirectoryEntry)
-                items.add(fetchDataDebug("${imageDirectoryEntry.imageID}/default_image", key).toObservable())
+                items.add(fetchDataDebug("${imageDirectoryEntry.pathToImage}/default_image", key).toObservable())
             }
         }
         Observable.just(items)
     }?.flatMap { arrayOfObservables ->
-        Observable.zip(arrayOfObservables) { data->
+        Observable.zip(arrayOfObservables) { data ->
             val transfer = mutableListOf<String>()
             data.forEach {
                 transfer.add(it as String)
@@ -151,7 +167,13 @@ fun fetchItemDetails(
                             data.optJSONObject("attributes")?.run {
                                 optJSONObject("uri")?.run {
                                     optString("url")?.let { url ->
-                                        urlToIDMap[data.optString("id")]?.url = url
+                                        val key = data.optString("id")
+                                        var value = urlToIDMap[key]
+                                        value?.run {
+                                            var temp = value.copy()
+                                            temp.url = url
+                                            urlToIDMap.put(key, temp)
+                                        }
                                     }
                                 }
                             }
