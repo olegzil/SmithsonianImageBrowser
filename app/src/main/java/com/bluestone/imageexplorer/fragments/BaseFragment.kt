@@ -1,5 +1,6 @@
 package com.bluestone.imageexplorer.fragments
 
+import android.graphics.drawable.BitmapDrawable
 import android.os.Bundle
 import android.support.v4.app.Fragment
 import android.support.v4.content.ContextCompat
@@ -15,14 +16,16 @@ import com.bluestone.imageexplorer.R
 import com.bluestone.imageexplorer.cachemanager.CacheManager
 import com.bluestone.imageexplorer.datamodel.BaseFragmentInitializer
 import com.bluestone.imageexplorer.datamodel.DisplayedPageState
-import com.bluestone.imageexplorer.datamodel.FragmentCreationDescriptor
 import com.bluestone.imageexplorer.datamodelloader.DisplayedPageStateLoader
 import com.bluestone.imageexplorer.interfaces.FragmentCreationInterface
 import com.bluestone.imageexplorer.recyclerviewadapters.GenericImageAdapter
 import com.bluestone.imageexplorer.touchhandlers.RecyclerItemClickListener
 import com.bluestone.imageexplorer.touchhandlers.RecyclerViewScrollHandler
+import com.bluestone.imageexplorer.utilities.ImageManipulator
 import com.bluestone.imageexplorer.utilities.printLog
 import com.bluestone.imageexplorer.utilities.printLogWithStack
+import com.squareup.picasso.Callback
+import com.squareup.picasso.Picasso
 import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
@@ -35,6 +38,8 @@ open class BaseFragment : Fragment(), FragmentCreationInterface {
     private val disposables = CompositeDisposable()
     private var nextPage = 2
     protected lateinit var parentState: BaseFragmentInitializer
+    private var shortAnimationDuration: Int = 0
+    private lateinit var mainView:View
 
     override fun onCreate(savedInstanceState: Bundle?) {
         /*
@@ -61,11 +66,11 @@ open class BaseFragment : Fragment(), FragmentCreationInterface {
         savedInstanceState: Bundle?
     ): View? {
         // If there is no saved state, initiate a server request to populate the recycler view adapter
-        val view = inflater.inflate(R.layout.fragment_recycler, container, false)
-        initializeFragment(view)
+        mainView = inflater.inflate(R.layout.fragment_recycler, container, false)
+        initializeFragment(mainView)
 
         super.onCreateView(inflater, container, savedInstanceState)
-        return view
+        return mainView
     }
 
     override fun callbackSubject() = parentState.fragmentSubject
@@ -148,9 +153,28 @@ open class BaseFragment : Fragment(), FragmentCreationInterface {
         return fetchServerData(nextPage)
     }
 
-    protected fun displayDetailPhoto(url: String) {
-        val photoView = PhotoFragment.newInstance(url)
-        parentState.fragmentSubject.onNext(FragmentCreationDescriptor(photoView, PhotoFragment.fragmentID))
+    protected open fun displayDetailPhoto(url: String) {
+        mainView.findViewById<ImageManipulator>(R.id.expanded_image)
+            ?.let {targetImageView ->
+            targetImageView.visibility = View.VISIBLE
+            shortAnimationDuration = resources.getInteger(android.R.integer.config_shortAnimTime)
+            Picasso.get()
+                .load(url)
+                .noPlaceholder()
+                .fit()
+                .centerInside()
+                .into(targetImageView, object : Callback {
+                    override fun onSuccess() {
+                        val tempBMP = targetImageView.drawable as BitmapDrawable
+                        targetImageView.setBitmap(tempBMP.bitmap, targetImageView.imageMatrix)
+                    }
+                    override fun onError(e: Exception?) {
+                        e?.let {
+                            printLog(it.localizedMessage)
+                        }
+                    }
+                })
+        }
     }
 
     private fun initializeFragment(view: View) {

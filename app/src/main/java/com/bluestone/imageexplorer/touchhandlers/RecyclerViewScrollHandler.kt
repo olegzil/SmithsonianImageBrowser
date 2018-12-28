@@ -28,11 +28,12 @@ class RecyclerViewScrollHandler(
     private enum class ScrollDirection { SCROLL_DOWN, SCROLL_UP, IDLE }
 
     private var scrollDirection = ScrollDirection.IDLE
+    //TODO:OZ add a selector to discriminate between vertical and horizontal scrolling
     override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
         super.onScrolled(recyclerView, dx, dy)
         scrollDirection = when {
-            dy < 0 -> ScrollDirection.SCROLL_DOWN
-            dy > 0 -> ScrollDirection.SCROLL_UP
+            dx < 0 -> ScrollDirection.SCROLL_DOWN
+            dx > 0 -> ScrollDirection.SCROLL_UP
             else -> ScrollDirection.IDLE
         }
     }
@@ -46,7 +47,7 @@ class RecyclerViewScrollHandler(
                     printLog("scrollAccumulator = $scrollAccumulator SCROLLING DOWN first = $first nextPage = $nextPage")
                 }
             ScrollDirection.SCROLL_UP ->
-                if (last >= GenericImageAdapter.maxAdapterSize - 1) {
+                if (last >= GenericImageAdapter.maxAdapterSize - 3) {
                     ++nextPage
                     printLog("scrollAccumulator = $scrollAccumulator SCROLLING UP first = $first nextPage = $nextPage")
                 }

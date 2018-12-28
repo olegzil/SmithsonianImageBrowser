@@ -20,7 +20,7 @@ class SmithsonianImagesFragment : BaseFragment() {
     }
 
     override fun fetchServerData(nextPage:Int): Single<DisplayedPageState>? {
-        return parentState.dataLoader.get(GenericImageAdapter.maxPageSize, nextPage)?.run {
+        return parentState.dataLoader.get(GenericImageAdapter.maxAdapterSize, nextPage)?.run {
             flatMap { items ->
                 Single.just(DisplayedPageState(0, 0, items))
             } ?: let {

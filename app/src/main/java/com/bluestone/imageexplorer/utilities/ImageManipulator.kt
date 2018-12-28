@@ -12,7 +12,7 @@ import android.view.ScaleGestureDetector
 import android.widget.ImageView
 import java.io.IOException
 
-class ImageScroller(context: Context, attrs: AttributeSet?) : ImageView(context, attrs) {
+class ImageManipulator(context: Context, attrs: AttributeSet?) : ImageView(context, attrs) {
 
     private var mBitmap: Bitmap? = null
     private var mImageWidth: Int = 0

@@ -1,27 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              android:id="@+id/item_detail_layout"
-              android:layout_width="match_parent"
-              android:layout_height="wrap_content"
-              android:background="?android:attr/selectableItemBackground"
-              android:clickable="true"
-              android:focusable="true"
+              android:id="@+id/fragment_frame_id"
               android:orientation="horizontal"
-              android:paddingBottom="@dimen/row_padding_vertical"
-              android:paddingLeft="@dimen/activity_horizontal_margin"
-              android:paddingRight="@dimen/activity_horizontal_margin"
-              android:paddingTop="@dimen/row_padding_vertical">
+              android:layout_height="wrap_content"
+              android:layout_width="wrap_content">
     <ImageView
             android:id="@+id/thumbnail"
-            android:layout_width="fill_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="0.5"
-            android:gravity="center"/>
-
-    <TextView
-            android:id="@+id/image_name"
-            android:layout_width="fill_parent"
-            android:layout_height="wrap_content"
-            android:layout_weight="0.5"
-            android:gravity="center"/>
+            android:layout_margin="16dp"
+            android:visibility="visible"
+            android:src="@drawable/ic_launcher_background"
+            android:contentDescription="@string/app_name"/>
 </LinearLayout>

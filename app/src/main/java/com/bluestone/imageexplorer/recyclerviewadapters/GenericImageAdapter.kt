@@ -5,7 +5,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
-import android.widget.TextView
 import com.bluestone.imageexplorer.R
 import com.bluestone.imageexplorer.interfaces.AdapterScrollerInterface
 import com.bluestone.imageexplorer.itemdetail.ItemDetail
@@ -23,7 +22,7 @@ class GenericImageAdapter : RecyclerView.Adapter<GenericImageAdapter.ImageHolder
 
     inner class ImageHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         fun bind(itemDetail: ItemDetail) {
-            itemView.findViewById<TextView>(R.id.image_name).text = itemDetail.title
+//            itemView.findViewById<TextView>(R.id.image_name).text = itemDetail.title
             val item = itemView.findViewById<ImageView>(R.id.thumbnail)
 
             Picasso.get()
@@ -75,7 +74,7 @@ class GenericImageAdapter : RecyclerView.Adapter<GenericImageAdapter.ImageHolder
     }
 
     companion object {
-        val maxAdapterSize = 1000000
+        val maxAdapterSize = 15
         val maxPageSize = 5
     }
 }
