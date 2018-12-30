@@ -15,7 +15,7 @@ class RetrofitNetworkService(headerInitializer: NetworkServiceInitializer) {
 
     init {
         //Minimum log output for http calls
-        logging.level = HttpLoggingInterceptor.Level.HEADERS
+        logging.level = HttpLoggingInterceptor.Level.NONE
         httpClient.addInterceptor(logging)
         baseUrl = headerInitializer.base
         httpClient

@@ -4,12 +4,11 @@ import com.bluestone.imageexplorer.interfaces.DataLoaderInterface
 import com.bluestone.imageexplorer.itemdetail.ItemDetail
 import com.bluestone.imageexplorer.server.NetworkServiceInitializer
 import com.bluestone.imageexplorer.server.RetrofitNetworkService
-import com.bluestone.imageexplorer.utilities.fetchImageDirectoryEntries
-import com.bluestone.imageexplorer.utilities.fetchImageUrlList
-import com.bluestone.imageexplorer.utilities.fetchItemDetails
-import com.bluestone.imageexplorer.utilities.toImmutableList
+import com.bluestone.imageexplorer.utilities.*
 import io.reactivex.Observable
 import io.reactivex.Single
+import io.reactivex.schedulers.Schedulers
+
 class SmithsonianImagesDataLoader(
     private val key: String
 ) : DataLoaderInterface {
@@ -28,6 +27,10 @@ class SmithsonianImagesDataLoader(
 
     override fun get(items_per_page: Int, page_number: Int): Single<List<ItemDetail>>? {
         return fetchItemDetails(server, key, items_per_page, page_number)?.singleOrError()?.run {
+            subscribeOn(Schedulers.io())
+            doOnSubscribe {
+                printLog("from fetchItemDetails")
+            }
             flatMap {combinedData ->
                 val result = mutableListOf<ItemDetail>()
                 combinedData.forEach { entry ->

@@ -1,11 +1,13 @@
 package com.bluestone.imageexplorer.utilities
 
 import android.util.Log
+import com.bluestone.imageexplorer.BuildConfig
 import com.bluestone.imageexplorer.datamodel.ImageDirectoryEntry
 import com.bluestone.imageexplorer.server.RetrofitNetworkService
 import io.reactivex.Observable
 import io.reactivex.ObservableSource
 import io.reactivex.Single
+import io.reactivex.schedulers.Schedulers
 import org.json.JSONException
 import org.json.JSONObject
 
@@ -15,17 +17,32 @@ data class CombinedImageData(var url: String, val payload: ImageDirectoryEntry)
 class ImmutableList<T>(private val inner: List<T>) : List<T> by inner
 
 fun <T> List<T>.toImmutableList(): List<T> {
-    if (this is ImmutableList<T>) {
-        return this
+    return if (this is ImmutableList<T>) {
+        this
     } else {
-        return ImmutableList(this)
+        ImmutableList(this)
+    }
+}
+
+fun printOrCrash(msg:String, e:Throwable?=null){
+    val decorator = "=-=-=-=-=-=-="
+    e?.run {
+        when(BuildConfig.BUILD_TYPE){
+            "debug" -> throw(this)
+            "release" -> printLog(msg)
+            else -> {
+                printLog("unrecognizable ${BuildConfig.BUILD_TYPE}")
+            }
+        }
+    }?: run {
+        printLog(msg)
     }
 }
 
 fun printLog(msg: String) {
     val decorator = "=-=-=-=-=-=-="
-//    if (Log.isLoggable(TAG, Log.DEBUG))
-    Log.d(TAG, "$decorator $msg $decorator")
+    if (BuildConfig.DEBUG)
+        Log.d(TAG, "$decorator $msg $decorator")
 }
 
 fun printLogWithStack(msg: String) {
@@ -56,13 +73,14 @@ fun fetchImageDirectoryEntries(
 ): Single<List<ImageDirectoryEntry>>? {
     return server.getApi()?.run {
         fetchNextPage(key, items_per_page, page_number)
+            .subscribeOn(Schedulers.io())
             .flatMap { jsonString ->
                 try {
                     val rootObject = JSONObject(jsonString)
                     val dataArray = rootObject.getJSONArray("data")
                     val imageDescriptor = mutableListOf<ImageDirectoryEntry>()
                     for (index in 0 until dataArray.length()) {
-                        val key = dataArray.getJSONObject(index).optString("id")
+                        val idKey = dataArray.getJSONObject(index).optString("id")
                         val attributes = dataArray.getJSONObject(index).optJSONObject("attributes")
                         attributes?.let { attributesItems ->
                             val title = attributesItems.optString("title")
@@ -73,10 +91,10 @@ fun fetchImageDirectoryEntries(
                                 ?.optJSONObject("data")
                                 ?.optString("id")
                                 ?.let { pathToImage ->
-                                    if (key.isNotEmpty())
+                                    if (idKey.isNotEmpty())
                                         imageDescriptor.add(
                                             ImageDirectoryEntry(
-                                                key,
+                                                idKey,
                                                 pathToImage,
                                                 title,
                                                 creditLine,
@@ -116,7 +134,7 @@ fun fetchImageUrlList(
                 val listOfURLs = mutableListOf<String>()
                 listOfStrings.forEach { jsonString ->
                     JSONObject(jsonString).run {
-                        val data = optJSONObject("data")?.run {
+                        optJSONObject("data")?.run {
                             optJSONObject("attributes")?.run {
                                 optJSONObject("uri")?.run {
                                     optString("url")?.let { item ->
@@ -143,48 +161,63 @@ fun fetchItemDetails(
     page_number: Int
 ): Observable<Map<String, CombinedImageData>>? {
     val urlToIDMap = mutableMapOf<String, CombinedImageData>()
-    return fetchImageDirectoryEntries(server, key, items_per_page, page_number)?.toObservable()?.flatMap {
-        val items = arrayListOf<ObservableSource<String>>()
-        it.forEach { imageDirectoryEntry ->
-            server.getApi()?.run {
-                urlToIDMap[imageDirectoryEntry.imageID] = CombinedImageData("", imageDirectoryEntry)
-                items.add(fetchDataDebug("${imageDirectoryEntry.pathToImage}/default_image", key).toObservable())
-            }
-        }
-        Observable.just(items)
-    }?.flatMap { arrayOfObservables ->
-        Observable.zip(arrayOfObservables) { data ->
-            val transfer = mutableListOf<String>()
-            data.forEach {
-                transfer.add(it as String)
-            }
-            transfer
-        }
-            .flatMap { listOfStrings ->
-                listOfStrings.forEach { jsonString ->
-                    JSONObject(jsonString).run {
-                        optJSONObject("data")?.let { data ->
-                            data.optJSONObject("attributes")?.run {
-                                optJSONObject("uri")?.run {
-                                    optString("url")?.let { url ->
-                                        val key = data.optString("id")
-                                        var value = urlToIDMap[key]
-                                        value?.run {
-                                            var temp = value.copy()
-                                            temp.url = url
-                                            urlToIDMap.put(key, temp)
+    return fetchImageDirectoryEntries(server, key, items_per_page, page_number)?.let { ideSingle ->
+        ideSingle.subscribeOn(Schedulers.io())
+        ideSingle.toObservable()?.let { ideObservable ->
+            ideObservable.flatMap {
+                val items = arrayListOf<ObservableSource<String>>()
+                it.forEach { imageDirectoryEntry ->
+                    server.getApi()?.run {
+                        urlToIDMap[imageDirectoryEntry.imageID] = CombinedImageData("", imageDirectoryEntry)
+                        items.add(
+                            fetchDataDebug(
+                                "${imageDirectoryEntry.pathToImage}/default_image",
+                                key
+                            ).toObservable()
+                        )
+                    }
+                }
+                Observable.just(items)
+            }.flatMap { arrayOfObservables ->
+                Observable.zip(arrayOfObservables) { data ->
+                    val transfer = mutableListOf<String>()
+                    data.forEach {
+                        transfer.add(it as String)
+                    }
+                    transfer
+                }
+                    .flatMap { listOfStrings ->
+                        listOfStrings.forEach { jsonString ->
+                            JSONObject(jsonString).run {
+                                optJSONObject("data")?.let { data ->
+                                    data.optJSONObject("attributes")?.run {
+                                        optJSONObject("uri")?.run {
+                                            optString("url")?.let { url ->
+                                                val itemUUID = data.optString("id")
+                                                val value = urlToIDMap[itemUUID]
+                                                value?.run {
+                                                    val temp = value.copy()
+                                                    temp.url = url
+                                                    urlToIDMap.put(itemUUID, temp)
+                                                }
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
+                        if (!urlToIDMap.isEmpty()) {
+                            urlToIDMap.forEach {
+                                val buffer = StringBuffer()
+                                buffer.append("${it.key} ${it.value.url} ${it.value.payload.imageID} ${it.value.payload.pathToImage}")
+                                printLog("fetching: ${buffer.toString()}")
+                            }
+                            Observable.just(urlToIDMap)
+                        }
+                        else
+                            Observable.error<Map<String, CombinedImageData>>(Throwable("invalid json"))
                     }
-                }
-                if (!urlToIDMap.isEmpty())
-                    Observable.just(urlToIDMap)
-                else
-                    Observable.error<Map<String, CombinedImageData>>(Throwable("invalid json"))
             }
+        }
     }
 }
-

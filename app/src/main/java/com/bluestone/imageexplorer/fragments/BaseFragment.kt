@@ -1,5 +1,6 @@
 package com.bluestone.imageexplorer.fragments
 
+import android.content.Context
 import android.graphics.drawable.BitmapDrawable
 import android.os.Bundle
 import android.support.v4.app.Fragment
@@ -36,11 +37,11 @@ import io.reactivex.schedulers.Schedulers
 open class BaseFragment : Fragment(), FragmentCreationInterface {
     private lateinit var mRecyclerView: RecyclerView
     private val disposables = CompositeDisposable()
-    private var nextPage = 2
+    private var nextPage = 1
     protected lateinit var parentState: BaseFragmentInitializer
     private var shortAnimationDuration: Int = 0
     private lateinit var mainView:View
-
+    private lateinit var recylcerViewHandler:RecyclerViewScrollHandler
     override fun onCreate(savedInstanceState: Bundle?) {
         /*
         * If context is null, the show is over. Otherwise, we test savedInstanceState. If that value is not null
@@ -76,9 +77,10 @@ open class BaseFragment : Fragment(), FragmentCreationInterface {
     override fun callbackSubject() = parentState.fragmentSubject
     override fun fragment() = this
     override fun getFragmentId() = parentState.fragmentID
-    override fun onResume() {
-        super.onResume()
-        printLog("${parentState.fragmentTag}.onResume")
+    private fun restoreScrollChangeObserver(){
+        disposables.add(recylcerViewHandler.handleScrollingChange(RecyclerViewScrollHandler.scrollNotifier))
+    }
+    private fun restoreSavedAdapterSavedState(){
         populateAdapterFromSavedState(nextPage)?.run {
             val disposable = observeOn(AndroidSchedulers.mainThread())
                 .subscribeOn(Schedulers.io())
@@ -102,12 +104,37 @@ open class BaseFragment : Fragment(), FragmentCreationInterface {
         }
     }
 
+    override fun onAttach(context: Context?) {
+        super.onAttach(context)
+    }
+    override fun onStart() {
+        super.onStart()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        restoreScrollChangeObserver()
+        restoreSavedAdapterSavedState()
+        printLog("${parentState.fragmentTag}.onResume")
+    }
+
     override fun onPause() {
         super.onPause()
 //        saveAdapterState()
         disposables.clear()
     }
 
+    override fun onStop() {
+        super.onStop()
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+    }
     override fun onDetach() {
         super.onDetach()
         disposables.clear()
@@ -188,14 +215,11 @@ open class BaseFragment : Fragment(), FragmentCreationInterface {
             divider.setDrawable(ContextCompat.getDrawable(context!!, R.drawable.custom_devider)!!)
             mRecyclerView.addItemDecoration(divider)
             context?.let { context ->
-                mRecyclerView.addOnScrollListener(
-                    RecyclerViewScrollHandler(
-                        context,
-                        parentState.genericAdapter,
-                        parentState.dataLoader,
-                        nextPage
-                    )
+                recylcerViewHandler = RecyclerViewScrollHandler(
+                    parentState.genericAdapter,
+                    nextPage
                 )
+                mRecyclerView.addOnScrollListener(recylcerViewHandler)
 
                 mRecyclerView.addOnItemTouchListener(
                     RecyclerItemClickListener(

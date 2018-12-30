@@ -6,8 +6,8 @@ import com.bluestone.imageexplorer.interfaces.AdapterScrollerInterface
 open class AdapterScroller<T> (private val itemList:ArrayList<T>, val recycler: RecyclerView.Adapter<RecyclerView.ViewHolder>) :
     AdapterScrollerInterface<T> {
     override fun removeFirstNItems(newItems: List<T>) {
-        for (  i in 0 until newItems.size)
-            itemList.removeAt(i)
+        for (  i in 0 until itemList.size)
+            itemList.removeAt(0)
         itemList.addAll(itemList.size, newItems)
         recycler.notifyItemRangeRemoved(0, newItems.size)
     }
@@ -16,10 +16,10 @@ open class AdapterScroller<T> (private val itemList:ArrayList<T>, val recycler: 
         val start = itemList.size - newItems.size
         if (start < 0)
             return
-        for (i in start until newItems.size)
-            itemList.removeAt(i)
-        itemList.addAll(0, newItems)
-        recycler.notifyItemRangeInserted(0, newItems.size)
+        for (i in start until itemList.size)
+            itemList.removeAt(start)
+        itemList.addAll(start, newItems)
+        recycler.notifyItemRangeInserted(start, newItems.size)
     }
 
     override fun update(newItems: List<T>) {
