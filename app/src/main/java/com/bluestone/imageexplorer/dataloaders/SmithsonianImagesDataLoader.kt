@@ -3,8 +3,11 @@ package com.bluestone.imageexplorer.dataloaders
 import com.bluestone.imageexplorer.interfaces.DataLoaderInterface
 import com.bluestone.imageexplorer.itemdetail.ItemDetail
 import com.bluestone.imageexplorer.server.NetworkServiceInitializer
-import com.bluestone.imageexplorer.server.RetrofitNetworkService
-import com.bluestone.imageexplorer.utilities.*
+import com.bluestone.imageexplorer.server.SmithsonianRetrofitNetworkService
+import com.bluestone.imageexplorer.utilities.fetchImageDirectoryEntries
+import com.bluestone.imageexplorer.utilities.fetchImageUrlList
+import com.bluestone.imageexplorer.utilities.fetchItemDetails
+import com.bluestone.imageexplorer.utilities.toImmutableList
 import io.reactivex.Observable
 import io.reactivex.Single
 import io.reactivex.schedulers.Schedulers
@@ -12,7 +15,7 @@ import io.reactivex.schedulers.Schedulers
 class SmithsonianImagesDataLoader(
     private val key: String
 ) : DataLoaderInterface {
-    private var server: RetrofitNetworkService
+    private var server: SmithsonianRetrofitNetworkService
     private val header = mapOf(
         "X-Api-Key"                         to "gWGUcVRk85uDmdlt2w9VZvTaR47gmLc1iYKjiiXy",
         "Accept"                            to "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
@@ -22,26 +25,22 @@ class SmithsonianImagesDataLoader(
     )
 
     init {
-        server = RetrofitNetworkService(NetworkServiceInitializer("https://api.si.edu/saam/v1/artworks/", header))
+        server = SmithsonianRetrofitNetworkService(NetworkServiceInitializer("https://api.si.edu/saam/v1/artworks/", header))
     }
 
     override fun get(items_per_page: Int, page_number: Int): Single<List<ItemDetail>>? {
         return fetchItemDetails(server, key, items_per_page, page_number)?.singleOrError()?.run {
             subscribeOn(Schedulers.io())
-            doOnSubscribe {
-                printLog("from fetchItemDetails")
-            }
             flatMap {combinedData ->
                 val result = mutableListOf<ItemDetail>()
                 combinedData.forEach { entry ->
                     with(entry.value) {
                         result.add(
                             ItemDetail(
-                                payload.imageID,
                                 payload.title,
-                                payload.credit,
-                                payload.medium,
-                                entry.value.url
+                                entry.value.url,
+                                entry.value.url,
+                                this
                             )
                         )
                     }

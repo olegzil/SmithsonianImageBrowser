@@ -5,9 +5,8 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class ItemDetail(
-    @SerialId(0) val imageId:String,
     @SerialId(1) val title: String,
-    @SerialId(2) val credit: String,
-    @SerialId(3) val medium: String,
-    @SerialId(4) val thumbnailUrl: String
+    @SerialId(3) val fullResolutionURL: String,
+    @SerialId(4) val previewURL: String,
+    @SerialId(5) val extra:Any
 )

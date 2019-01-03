@@ -6,7 +6,6 @@ import android.support.v7.app.AppCompatActivity
 import com.bluestone.imageexplorer.R
 import com.bluestone.imageexplorer.cachemanager.CacheManager
 import com.bluestone.imageexplorer.datamodel.FragmentCreationDescriptor
-import com.bluestone.imageexplorer.datamodel.MainActivityData
 import com.bluestone.imageexplorer.fragments.SmithsonianImagesFragment
 import com.bluestone.imageexplorer.utilities.printLog
 import io.reactivex.disposables.Disposables
@@ -19,14 +18,7 @@ class MainActivity : AppCompatActivity() {
 
     private var disposable = Disposables.disposed()
     override fun onCreate(savedInstanceState: Bundle?) {
-        if (savedInstanceState == null){
-            Bundle().run {
-                putSerializable(MAIN_APP_ACTIVITY_KEY, MainActivityData(fragmentCallback))
-                super.onCreate(this)
-            }
-        } else {
-            super.onCreate(savedInstanceState)
-        }
+        super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         CacheManager.initialize(applicationContext, "masterDB")
         displayNextFragment(SmithsonianImagesFragment.newInstance() as Fragment, SmithsonianImagesFragment.fragmentID)

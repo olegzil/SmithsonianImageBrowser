@@ -6,16 +6,16 @@ import retrofit2.Retrofit
 import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory
 import retrofit2.converter.scalars.ScalarsConverterFactory
 
-class RetrofitNetworkService(headerInitializer: NetworkServiceInitializer) {
+class PixabayRetrofitNetworkServices(headerInitializer: NetworkServiceInitializer) {
     private var retrofit: Retrofit? = null
-    private var api: NetworkApiInterface? = null
+    private var api: PixabayServerAPIInterface? = null
     private var httpClient = OkHttpClient.Builder()
     private val logging = HttpLoggingInterceptor()
     private var baseUrl: String
 
     init {
         //Minimum log output for http calls
-        logging.level = HttpLoggingInterceptor.Level.NONE
+        logging.level = HttpLoggingInterceptor.Level.HEADERS
         httpClient.addInterceptor(logging)
         baseUrl = headerInitializer.base
         httpClient
@@ -40,9 +40,9 @@ class RetrofitNetworkService(headerInitializer: NetworkServiceInitializer) {
         return retrofit
     }
 
-    fun getApi(): NetworkApiInterface? {
+    fun getApi(): PixabayServerAPIInterface? {
         if (api == null) {
-            api = getRetrofit()?.create<NetworkApiInterface>(NetworkApiInterface::class.java)
+            api = getRetrofit()?.create<PixabayServerAPIInterface>(PixabayServerAPIInterface::class.java)
         }
         return api
     }

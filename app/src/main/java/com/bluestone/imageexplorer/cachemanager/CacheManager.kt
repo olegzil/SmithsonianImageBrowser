@@ -6,8 +6,6 @@ import com.snappydb.DB
 import com.snappydb.SnappyDB
 import com.snappydb.SnappydbException
 import kotlinx.serialization.ImplicitReflectionSerializer
-import kotlinx.serialization.json.JSON
-import kotlinx.serialization.parse
 
 object CacheManager {
     fun initialize(context: Context, dbname: String) : CacheManager {
@@ -41,23 +39,6 @@ object CacheManager {
         if (!database.exists(key))
             return null
         return database.get(key)
-    }
-
-    @UseExperimental(ImplicitReflectionSerializer::class)
-    fun getItem(key:String) : Any? {
-        if (!database.isOpen)
-            return null
-        if (database.exists(key)){
-            return JSON.unquoted.parse(database.get(key))
-        }
-        return null
-    }
-
-    @UseExperimental(ImplicitReflectionSerializer::class)
-    fun <T>putItem(key:String, item:T) {
-        if (!database.isOpen)
-            return
-        database.put(key, item)
     }
 
     fun deleteKey(key: String) = try {
