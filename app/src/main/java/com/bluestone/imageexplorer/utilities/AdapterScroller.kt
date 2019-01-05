@@ -23,22 +23,16 @@ open class AdapterScroller<T>(
 
     //Scrolling right
     override fun removeLastNItems(newItems: List<T>, scrollParameters: ScrollingParametersData) {
-        val removalPosEnd = scrollParameters.last
-        val removePosStart = itemList.size-1
+        itemList.addAll(0, newItems)
+        recycler.notifyItemRangeInserted(0, newItems.size)
+
+        val removePosStart = newItems.size
         var removedCount = 0
-        for (i in removePosStart downTo removalPosEnd) {
-            itemList.removeAt(i)
+        for (i in removePosStart until itemList.size) {
+            itemList.removeAt(removePosStart)
             removedCount++
         }
         recycler.notifyItemRangeRemoved(removePosStart, removedCount)  //notify that the remove occurred
-
-        val temp:MutableList<T> = mutableListOf()
-        for (i in 0 until newItems.size)
-            temp.add(newItems[newItems.size-1])
-
-        itemList.addAll(0, temp)
-        recycler.notifyItemRangeInserted(0, newItems.size)
-//        scrollNotification.onNext(scrollParameters)
         printLog("after removeLastNItems first = ${scrollParameters.first} last=${scrollParameters.last} page=${scrollParameters.page} items=${itemList.size}")
     }
 
