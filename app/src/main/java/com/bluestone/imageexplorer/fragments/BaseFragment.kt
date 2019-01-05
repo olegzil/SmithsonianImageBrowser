@@ -16,6 +16,7 @@ import com.bluestone.imageexplorer.R
 import com.bluestone.imageexplorer.cachemanager.CacheManager
 import com.bluestone.imageexplorer.datamodel.DisplayedPageState
 import com.bluestone.imageexplorer.datamodel.FragmentScrollData
+import com.bluestone.imageexplorer.datamodel.ScrollingParametersData
 import com.bluestone.imageexplorer.interfaces.FragmentCreationInterface
 import com.bluestone.imageexplorer.recyclerviewadapters.GenericImageAdapter
 import com.bluestone.imageexplorer.touchhandlers.RecyclerItemClickListener
@@ -28,11 +29,14 @@ import com.squareup.picasso.Picasso
 import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
+import io.reactivex.observers.DisposableObserver
 import io.reactivex.observers.DisposableSingleObserver
 import io.reactivex.schedulers.Schedulers
+import io.reactivex.subjects.PublishSubject
+import kotlinx.serialization.MissingFieldException
 import kotlinx.serialization.json.JSON
 
-
+val scrollNotification = PublishSubject.create<ScrollingParametersData>()
 open class BaseFragment : Fragment(), FragmentCreationInterface {
     private lateinit var mRecyclerView: RecyclerView
     private val disposables = CompositeDisposable()
@@ -48,7 +52,7 @@ open class BaseFragment : Fragment(), FragmentCreationInterface {
         // If there is no saved state, initiate a server request to populate the recycler view adapter
         mainView = inflater.inflate(R.layout.fragment_recycler, container, false)
         initializeFragment(mainView)
-
+        listenForScrollNotification()
         super.onCreateView(inflater, container, savedInstanceState)
         return mainView
     }
@@ -111,8 +115,12 @@ open class BaseFragment : Fragment(), FragmentCreationInterface {
     private fun restoreScrollState() {
         val savedState = CacheManager.getString(BASE_FRAGMENT_INITIAL_DATA_KEY)
         savedState?.let {jsonString->
-            JSON.parse(FragmentScrollData.serializer(), jsonString).let {scrollData->
-                nextPage = scrollData.nextPage
+            try {
+                JSON.parse(FragmentScrollData.serializer(), jsonString).let { scrollData ->
+                    nextPage = scrollData.nextPage
+                }
+            } catch (e: MissingFieldException){
+                nextPage = 2
             }
         }
     }
@@ -166,6 +174,20 @@ open class BaseFragment : Fragment(), FragmentCreationInterface {
         }
     }
 
+    private fun listenForScrollNotification(){
+        disposables.add(scrollNotification.subscribeWith(object:DisposableObserver<ScrollingParametersData>(){
+            override fun onComplete() {}
+            override fun onNext(scrollData: ScrollingParametersData) {
+                val pos = (mRecyclerView.layoutManager as LinearLayoutManager).findFirstVisibleItemPosition()
+                mRecyclerView.scrollToPosition(pos)
+            }
+
+            override fun onError(e: Throwable) {
+                printLog(e.toString())
+            }
+
+        }))
+    }
     private fun initializeFragment(view: View) {
         view.let { recyclerView ->
             mRecyclerView = recyclerView.findViewById(R.id.recycler_view)

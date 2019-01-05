@@ -101,8 +101,8 @@ class RecyclerViewScrollHandler(
         super.onScrollStateChanged(recyclerView, newState)
         if (newState != AbsListView.OnScrollListener.SCROLL_STATE_IDLE)
             return
-        last = (recyclerView.layoutManager as LinearLayoutManager).findLastVisibleItemPosition()
         first = (recyclerView.layoutManager as LinearLayoutManager).findFirstVisibleItemPosition()
+        last = (recyclerView.layoutManager as LinearLayoutManager).findLastVisibleItemPosition()
         nextPage = advancePageCounter(nextPage, first, last, scrollDirection)
         if (prevPage == nextPage)
             return
