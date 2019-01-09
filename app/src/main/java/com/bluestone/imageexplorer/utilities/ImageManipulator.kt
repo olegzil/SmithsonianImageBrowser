@@ -4,13 +4,10 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Matrix
-import android.net.Uri
-import android.provider.MediaStore
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.widget.ImageView
-import java.io.IOException
 
 class ImageManipulator(context: Context, attrs: AttributeSet?) : ImageView(context, attrs) {
 
@@ -33,14 +30,13 @@ class ImageManipulator(context: Context, attrs: AttributeSet?) : ImageView(conte
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-
         //the scale gesture detector should inspect all the touch events
         mScaleDetector.onTouchEvent(event)
         val action = event.action
-        var retVal = true
+        var retVal = false
         when (action and MotionEvent.ACTION_MASK) {
             MotionEvent.ACTION_DOWN -> {
-
+            printLog("ACTION_DOWN")
                 //get x and y cords of where we touch the screen
                 val x = event.x
                 val y = event.y
@@ -51,6 +47,7 @@ class ImageManipulator(context: Context, attrs: AttributeSet?) : ImageView(conte
 
                 //save the ID of this pointer
                 mActivePointerID = event.getPointerId(0)
+                return super.onTouchEvent(event)
             }
             MotionEvent.ACTION_MOVE -> {
 
@@ -75,19 +72,23 @@ class ImageManipulator(context: Context, attrs: AttributeSet?) : ImageView(conte
                 //remember this touch position for next move event
                 mLastTouchX = x
                 mLastTouchY = y
+                return super.onTouchEvent(event)
             }
 
             MotionEvent.ACTION_UP -> {
+                printLog("ACTION_UP")
                 mActivePointerID = INVALID_POINTER_ID
+                return super.onTouchEvent(event)
             }
 
             MotionEvent.ACTION_CANCEL -> {
                 mActivePointerID = INVALID_POINTER_ID
-
+                return super.onTouchEvent(event)
             }
 
             MotionEvent.ACTION_POINTER_UP -> {
                 //Extract the index of the pointer that left the screen
+                printLog("ACTION_POINTER_UP")
                 val pointerIndex =
                     action and MotionEvent.ACTION_POINTER_INDEX_MASK shr MotionEvent.ACTION_POINTER_INDEX_SHIFT
                 val pointerId = event.getPointerId(pointerIndex)
@@ -98,6 +99,7 @@ class ImageManipulator(context: Context, attrs: AttributeSet?) : ImageView(conte
                     mLastTouchY = event.getY(newPointerIndex)
                     mActivePointerID = event.getPointerId(newPointerIndex)
                 }
+                return super.onTouchEvent(event)
             }
             else -> return super.onTouchEvent(event)
         }
@@ -125,26 +127,6 @@ class ImageManipulator(context: Context, attrs: AttributeSet?) : ImageView(conte
         mBitmap = sourceBitmap
         mMatrix = matrix
         invalidate()
-    }
-
-    fun loadImageOnCanvas(selectedImage: Uri) {
-
-        var bitmap: Bitmap? = null
-
-        try {
-            bitmap = MediaStore.Images.Media.getBitmap(context.contentResolver, selectedImage)
-        } catch (e: IOException) {
-            e.printStackTrace()
-        }
-
-        val aspectRatio = bitmap!!.height.toFloat() / bitmap.width.toFloat()
-        val displayMetrics = resources.displayMetrics
-        mImageWidth = displayMetrics.widthPixels
-        mImageHeight = Math.round(mImageWidth * aspectRatio)
-        mBitmap = Bitmap.createScaledBitmap(bitmap, mImageWidth, mImageHeight, false)
-        invalidate()
-        //requestLayout();
-
     }
 
     private inner class ScaleListener : ScaleGestureDetector.SimpleOnScaleGestureListener() {

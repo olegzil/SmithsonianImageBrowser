@@ -9,14 +9,14 @@ import com.bluestone.imageexplorer.server.PixabayRetrofitNetworkServices
 import io.reactivex.Single
 import io.reactivex.schedulers.Schedulers
 
-class PixabayImagesLoader(
+class PixabayDataLoader(
     private val key: String
 ) : DataLoaderInterface {
     override fun put(data: ItemDetail) {}
 
     private var server: PixabayRetrofitNetworkServices
     private val header = mapOf(
-        "X-Api-Key" to "${PixabayKey}",
+        "X-Api-Key" to "$PixabayKey",
         "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
         "User-Agent" to "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.80 Safari/537.36",
         "Accept-Encoding" to "gzip, deflate, br",
@@ -35,7 +35,7 @@ class PixabayImagesLoader(
     override fun get(items_per_page: Int, page_number: Int): Single<List<ItemDetail>>? {
         return server.getApi()?.run {
             val result: Single<String>? =
-                fetchNext(PixabayKey, page_number, items_per_page)
+                fetchNext(key, page_number, items_per_page)
                     .subscribeOn(Schedulers.io())
             result?.run {
                 flatMap { data ->

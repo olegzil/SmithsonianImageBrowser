@@ -4,11 +4,9 @@ package com.bluestone.imageexplorer.touchhandlers
 import android.support.v7.widget.LinearLayoutManager
 import android.support.v7.widget.RecyclerView
 import android.widget.AbsListView
-import com.bluestone.imageexplorer.dataloaders.PixabayImagesLoader
 import com.bluestone.imageexplorer.datamodel.FragmentScrollData
 import com.bluestone.imageexplorer.datamodel.ScrollDirection
 import com.bluestone.imageexplorer.datamodel.ScrollingParametersData
-import com.bluestone.imageexplorer.datamodel.SmithsoniaKey
 import com.bluestone.imageexplorer.itemdetail.ItemDetail
 import com.bluestone.imageexplorer.recyclerviewadapters.GenericImageAdapter
 import com.bluestone.imageexplorer.utilities.printLog
@@ -22,13 +20,13 @@ import io.reactivex.subjects.PublishSubject
 
 class RecyclerViewScrollHandler(
     private val adapter: GenericImageAdapter,
-    private var nextPage: Int
+    private var nextPage: Int,
+    private var fetchServerData:(nextPage: Int)-> Single<List<ItemDetail>>?
 ) : RecyclerView.OnScrollListener() {
     private var prevPage = nextPage
-    private val dataLoader = PixabayImagesLoader(SmithsoniaKey)
     private var scrollDirection = ScrollDirection.IDLE
-    private var first:Int=0
-    private var last:Int=0
+    private var first: Int = 0
+    private var last: Int = 0
 
     //TODO:OZ add a selector to discriminate between vertical and horizontal scrolling
     override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
@@ -49,14 +47,14 @@ class RecyclerViewScrollHandler(
         var nextPage = page
         when (direction) {
             ScrollDirection.SCROLL_LEFT -> {
-                if (last >= GenericImageAdapter.maxAdapterSize-1) {
-                    nextPage = adapter.pixaBayNextPage(nextPage)
+                if (last >= adapter.itemCount - 1) {
+                    nextPage = adapter.smithsonianNextPage(nextPage)
                 }
             }
 
             ScrollDirection.SCROLL_RIGHT -> {
                 if (first <= 0) {
-                    nextPage = adapter.pixaBayPrevPage(nextPage)
+                    nextPage = adapter.smithsonianPrevPage(nextPage)
                 }
             }
             else ->
@@ -64,12 +62,13 @@ class RecyclerViewScrollHandler(
         }
         return nextPage
     }
+
     fun getScrollState() = FragmentScrollData(nextPage, first, last)
     fun handleScrollingChange(notifier: Observable<ScrollingParametersData>): Disposable {
         return notifier
             .retry()
             .flatMapSingle { scrollParameters ->
-                dataLoader.get(GenericImageAdapter.maxAdapterSize, scrollParameters.page)?.let {
+                fetchServerData(scrollParameters.page)?.let {
                     it.flatMap { itemDetailList ->
                         Single.just(Pair(scrollParameters, itemDetailList))
                     }
@@ -104,6 +103,7 @@ class RecyclerViewScrollHandler(
         first = (recyclerView.layoutManager as LinearLayoutManager).findFirstVisibleItemPosition()
         last = (recyclerView.layoutManager as LinearLayoutManager).findLastVisibleItemPosition()
         nextPage = advancePageCounter(nextPage, first, last, scrollDirection)
+        adapter.cancelImageFetching()
         if (prevPage == nextPage)
             return
         prevPage = nextPage

@@ -1,4 +1,7 @@
 <resources>
     <string name="app_name">ImageExplorer</string>
     <string name="main_view_title">SmithsonianImages</string>
+    <string name="wait_loading">Please Wait</string>
+    <string name="image_hint">"Pinch to zoom.\nTouch to drag.\nTap to toggle restore"</string>
+    <string name="thumbnail_touch_hint">"Touch image thumbnail to expand"</string>
 </resources>

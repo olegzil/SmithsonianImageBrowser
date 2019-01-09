@@ -1,6 +1,7 @@
 package com.bluestone.imageexplorer.fragments
 
-import android.graphics.drawable.BitmapDrawable
+import android.graphics.Bitmap
+import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.support.v4.app.Fragment
 import android.support.v7.widget.DefaultItemAnimator
@@ -10,34 +11,37 @@ import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.RelativeLayout
 import android.widget.TextView
 import android.widget.Toast
 import com.bluestone.imageexplorer.R
 import com.bluestone.imageexplorer.cachemanager.CacheManager
+import com.bluestone.imageexplorer.dataloaders.SmithsonianImagesDataLoader
 import com.bluestone.imageexplorer.datamodel.DisplayedPageState
 import com.bluestone.imageexplorer.datamodel.FragmentScrollData
-import com.bluestone.imageexplorer.datamodel.ScrollingParametersData
+import com.bluestone.imageexplorer.datamodel.SmithsonianKey
 import com.bluestone.imageexplorer.interfaces.FragmentCreationInterface
+import com.bluestone.imageexplorer.itemdetail.ItemDetail
+import com.bluestone.imageexplorer.notification.ViewNotificationPayload
 import com.bluestone.imageexplorer.recyclerviewadapters.GenericImageAdapter
 import com.bluestone.imageexplorer.touchhandlers.RecyclerItemClickListener
 import com.bluestone.imageexplorer.touchhandlers.RecyclerViewScrollHandler
 import com.bluestone.imageexplorer.utilities.ImageManipulator
 import com.bluestone.imageexplorer.utilities.printLog
 import com.bluestone.imageexplorer.utilities.printLogWithStack
-import com.squareup.picasso.Callback
 import com.squareup.picasso.Picasso
+import com.squareup.picasso.Target
+import io.reactivex.Observable
 import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.observers.DisposableObserver
 import io.reactivex.observers.DisposableSingleObserver
 import io.reactivex.schedulers.Schedulers
-import io.reactivex.subjects.PublishSubject
 import kotlinx.serialization.MissingFieldException
 import kotlinx.serialization.json.JSON
 
-val scrollNotification = PublishSubject.create<ScrollingParametersData>()
-open class BaseFragment : Fragment(), FragmentCreationInterface {
+abstract class BaseFragment : Fragment(), FragmentCreationInterface {
     private lateinit var mRecyclerView: RecyclerView
     private val disposables = CompositeDisposable()
     private var nextPage = 1
@@ -45,6 +49,7 @@ open class BaseFragment : Fragment(), FragmentCreationInterface {
     private lateinit var mainView: View
     private lateinit var recyclerViewScrollHandler: RecyclerViewScrollHandler
     private val adapter = GenericImageAdapter()
+    private val dataloader = SmithsonianImagesDataLoader(SmithsonianKey)
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -52,7 +57,6 @@ open class BaseFragment : Fragment(), FragmentCreationInterface {
         // If there is no saved state, initiate a server request to populate the recycler view adapter
         mainView = inflater.inflate(R.layout.fragment_recycler, container, false)
         initializeFragment(mainView)
-        listenForScrollNotification()
         super.onCreateView(inflater, container, savedInstanceState)
         return mainView
     }
@@ -104,7 +108,7 @@ open class BaseFragment : Fragment(), FragmentCreationInterface {
     override fun onPause() {
         super.onPause()
         disposables.clear()
-//        saveScrollState()
+        saveScrollState()
     }
 
     override fun onDetach() {
@@ -114,80 +118,95 @@ open class BaseFragment : Fragment(), FragmentCreationInterface {
 
     private fun restoreScrollState() {
         val savedState = CacheManager.getString(BASE_FRAGMENT_INITIAL_DATA_KEY)
-        savedState?.let {jsonString->
+        savedState?.let { jsonString ->
             try {
                 JSON.parse(FragmentScrollData.serializer(), jsonString).let { scrollData ->
                     nextPage = scrollData.nextPage
                 }
-            } catch (e: MissingFieldException){
+            } catch (e: MissingFieldException) {
                 nextPage = 2
             }
         }
     }
+
     private fun saveScrollState() {
-            val state =
-                FragmentScrollData(
-                    recyclerViewScrollHandler.getScrollState().nextPage,
-                    recyclerViewScrollHandler.getScrollState().firstItemOnScreen,
-                    recyclerViewScrollHandler.getScrollState().lastItemOnScreen
-                )
-            CacheManager.putString(
-                BaseFragment.BASE_FRAGMENT_INITIAL_DATA_KEY,
-                JSON.stringify(FragmentScrollData.serializer(), state)
+        val state =
+            FragmentScrollData(
+                recyclerViewScrollHandler.getScrollState().nextPage,
+                recyclerViewScrollHandler.getScrollState().firstItemOnScreen,
+                recyclerViewScrollHandler.getScrollState().lastItemOnScreen
             )
+        CacheManager.putString(
+            BaseFragment.BASE_FRAGMENT_INITIAL_DATA_KEY,
+            JSON.stringify(FragmentScrollData.serializer(), state)
+        )
     }
 
-    protected open fun fetchServerData(nextPage: Int): Single<DisplayedPageState>? {
-        return Single.never()
-    }
+    abstract fun fetchServerData(nextPage: Int): Single<DisplayedPageState>?
 
-    private fun populateAdapterFromSavedState(nextPage: Int): Single<DisplayedPageState>? = fetchNextPage(nextPage)
-    private fun fetchNextPage(nextPage: Int): Single<DisplayedPageState>? {
-        return fetchServerData(nextPage)
-    }
+    private fun populateAdapterFromSavedState(nextPage: Int): Single<DisplayedPageState>? = fetchServerData(nextPage)
+    abstract fun fetchNextPage(nextPage: Int): Single<List<ItemDetail>>?
 
-    protected open fun displayDetailPhoto(url: String, pos: Int) {
-
-        val imageView = mainView.findViewById<ImageManipulator>(R.id.expanded_image)
-        imageView?.let { targetImageView ->
-            targetImageView.visibility = View.VISIBLE
-            shortAnimationDuration = resources.getInteger(android.R.integer.config_shortAnimTime)
-            Picasso.get()
-                .load(url)
-                .noPlaceholder()
-                .fit()
-                .centerInside()
-                .into(targetImageView, object : Callback {
-                    override fun onSuccess() {
-                        val tempBMP = targetImageView.drawable as BitmapDrawable
-                        targetImageView.setBitmap(tempBMP.bitmap, targetImageView.imageMatrix)
-                        val textView = mainView.findViewById<TextView>(R.id.selected_index)
-                        textView?.text = pos.toString()
-                    }
-
-                    override fun onError(e: Exception?) {
-                        e?.let {
-                            printLog(it.localizedMessage)
+    private fun displayDetail(url: String, pos: Int): Observable<ViewNotificationPayload> {
+        return Observable.create { emitter ->
+            val imageView = mainView.findViewById<ImageManipulator>(R.id.expanded_image)
+            imageView?.let { targetImageView ->
+                val target = object : Target {
+                    fun toggleWaitMessage(flag: Boolean) {
+                        if (flag) {
+                            val textView = mainView.findViewById<TextView>(R.id.selected_index)
+                            val loadingPanel = mainView.findViewById<RelativeLayout>(R.id.loadingPanel)
+                            textView?.let {
+                                targetImageView.visibility = View.GONE
+                                loadingPanel.visibility = View.VISIBLE
+                                it.visibility = View.VISIBLE
+                                it.text = resources.getString(R.string.wait_loading)
+                            }
+                        } else {
+                            val textView = mainView.findViewById<TextView>(R.id.selected_index)
+                            val loadingPanel = mainView.findViewById<RelativeLayout>(R.id.loadingPanel)
+                            textView?.let {
+                                it.text = ""
+                                it.visibility = View.GONE
+                                loadingPanel.visibility = View.GONE
+                            }
+                            targetImageView.visibility = View.VISIBLE
                         }
                     }
-                })
+
+                    override fun onBitmapFailed(e: Exception?, errorDrawable: Drawable?) {
+                        emitter.onNext(ViewNotificationPayload(mainView, targetImageView, pos, url, false))
+                        printLog(e.toString())
+                    }
+
+                    override fun onBitmapLoaded(bitmap: Bitmap?, from: Picasso.LoadedFrom?) {
+                        toggleWaitMessage(false)
+                        bitmap?.let { newImageBitmap ->
+                            targetImageView.setBitmap(newImageBitmap, targetImageView.imageMatrix)
+                            printLog("bit map loaded")
+                        }
+                        emitter.onNext(ViewNotificationPayload(mainView, targetImageView, pos, url, false))
+                    }
+
+                    override fun onPrepareLoad(placeHolderDrawable: Drawable?) {
+                        emitter.onNext(ViewNotificationPayload(mainView, targetImageView, pos, url, true))
+                        toggleWaitMessage(true)
+                    }
+
+                }
+                targetImageView.visibility = View.VISIBLE
+                targetImageView.tag = target
+                shortAnimationDuration = resources.getInteger(android.R.integer.config_shortAnimTime)
+                Picasso.get()
+                    .load(url)
+                    .noPlaceholder()
+                    .into(target)
+            }
         }
     }
 
-    private fun listenForScrollNotification(){
-        disposables.add(scrollNotification.subscribeWith(object:DisposableObserver<ScrollingParametersData>(){
-            override fun onComplete() {}
-            override fun onNext(scrollData: ScrollingParametersData) {
-                val pos = (mRecyclerView.layoutManager as LinearLayoutManager).findFirstVisibleItemPosition()
-                mRecyclerView.scrollToPosition(pos)
-            }
+    abstract fun displayImageMetadata(imageDescriptor: ViewNotificationPayload)
 
-            override fun onError(e: Throwable) {
-                printLog(e.toString())
-            }
-
-        }))
-    }
     private fun initializeFragment(view: View) {
         view.let { recyclerView ->
             mRecyclerView = recyclerView.findViewById(R.id.recycler_view)
@@ -199,7 +218,7 @@ open class BaseFragment : Fragment(), FragmentCreationInterface {
                 recyclerViewScrollHandler = RecyclerViewScrollHandler(
                     adapter,
                     nextPage
-                )
+                ) { np -> dataloader.get(GenericImageAdapter.maxAdapterSize, np) }
                 mRecyclerView.addOnScrollListener(recyclerViewScrollHandler)
 
                 mRecyclerView.addOnItemTouchListener(
@@ -207,10 +226,25 @@ open class BaseFragment : Fragment(), FragmentCreationInterface {
                         context,
                         mRecyclerView,
                         object : RecyclerItemClickListener.OnItemClickListener {
+                            var busy = false
                             override fun onItemClick(view: View, position: Int) {
-                                displayDetailPhoto(
-                                    adapter.getItemDetailByPosition(position).fullResolutionURL,
-                                    position
+                                if (busy)
+                                    return
+                                disposables.add(
+                                    displayDetail(
+                                        adapter.getItemDetailByPosition(position).fullResolutionURL,
+                                        position
+                                    ).subscribeWith(object : DisposableObserver<ViewNotificationPayload>() {
+                                        override fun onNext(viewNotificationPayload: ViewNotificationPayload) {
+                                            busy = viewNotificationPayload.busy
+                                            viewNotificationPayload.targetView.setOnClickListener {
+                                                displayImageMetadata(viewNotificationPayload)
+                                            }
+                                        }
+
+                                        override fun onError(e: Throwable) {}
+                                        override fun onComplete() {}
+                                    })
                                 )
                             }
 

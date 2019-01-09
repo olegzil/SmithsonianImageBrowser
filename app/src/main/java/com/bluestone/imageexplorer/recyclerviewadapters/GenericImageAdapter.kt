@@ -51,6 +51,10 @@ class GenericImageAdapter : RecyclerView.Adapter<GenericImageAdapter.ImageHolder
         }
         imageViewRef.clear()
     }
+    override fun onDetachedFromRecyclerView(recyclerView:RecyclerView ){
+        cancelImageFetching()
+    }
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): GenericImageAdapter.ImageHolder {
         val itemView = LayoutInflater.from(parent.context)
             .inflate(R.layout.image_detail, parent, false)

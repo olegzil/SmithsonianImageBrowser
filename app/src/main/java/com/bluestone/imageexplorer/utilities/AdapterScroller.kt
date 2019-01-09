@@ -15,10 +15,9 @@ open class AdapterScroller<T>(
         itemList.addAll(insertionPoint, newItems)    //append new data at the end of the buffer
         recycler.notifyItemRangeInserted(insertionPoint, newItems.size)   //notify insertion occurred
 
-        for (i in 0 until  scrollParameters.first) //remove the front of the buffer up until the first visible item
+        for (i in 0 until scrollParameters.first) //remove the front of the buffer up until the first visible item
             itemList.removeAt(0)
         recycler.notifyItemRangeRemoved(0, scrollParameters.first)  //notify that the remove occurred
-        printLog("after removeFirstNItems first = ${scrollParameters.first} last=${scrollParameters.last} page=${scrollParameters.page} items=${itemList.size}")
     }
 
     //Scrolling right
@@ -33,7 +32,6 @@ open class AdapterScroller<T>(
             removedCount++
         }
         recycler.notifyItemRangeRemoved(removePosStart, removedCount)  //notify that the remove occurred
-        printLog("after removeLastNItems first = ${scrollParameters.first} last=${scrollParameters.last} page=${scrollParameters.page} items=${itemList.size}")
     }
 
     override fun update(newItems: List<T>) {

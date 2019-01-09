@@ -6,17 +6,20 @@
                 android:layout_height="fill_parent"
                 android:layout_alignParentBottom="true"
                 android:orientation="horizontal">
+    <RelativeLayout
+            style="@style/GenericProgressBackground"
+            android:id="@+id/loadingPanel"
+            android:visibility="gone">
+        <ProgressBar style="@style/GenericProgressIndicator"/>
+    </RelativeLayout>
     <TextView
             android:id="@+id/selected_index"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_alignLeft="@+id/expanded_image"
-            android:layout_alignRight="@+id/expanded_image"
-            android:layout_centerVertical="true"
+            android:layout_centerInParent="true"
             android:textAppearance="?android:attr/textAppearanceLarge"
-            android:text="DEBUG"
-            android:gravity="center" android:layout_marginLeft="172dp" android:layout_marginRight="-241dp"
-            android:layout_centerHorizontal="true"/>
+            android:text="@string/thumbnail_touch_hint"
+            android:gravity="center"/>
     <com.bluestone.imageexplorer.utilities.ImageManipulator
             android:layout_width="302dp"
             android:layout_height="431dp"
@@ -24,7 +27,7 @@
             android:id="@+id/expanded_image"
             android:visibility="gone"
             android:layout_above="@id/recycler_view"
-            android:layout_centerVertical="true"
+            android:layout_centerInParent="true"
             android:layout_centerHorizontal="true"/>
 
     <android.support.v7.widget.RecyclerView
@@ -46,5 +49,11 @@
             android:layout_alignParentStart="true"
             android:layout_centerVertical="true"
             android:layout_marginStart="147dp"/>
+    <android.support.design.widget.FloatingActionButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:clickable="true" app:srcCompat="@color/translucent" android:layout_alignParentEnd="true"
+            android:layout_alignParentTop="true" android:layout_marginEnd="37dp" android:id="@+id/floatingActionButton"
+            android:layout_marginTop="22dp"/>
 </RelativeLayout>
 
